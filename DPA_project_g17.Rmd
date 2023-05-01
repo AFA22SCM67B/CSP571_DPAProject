@@ -1,0 +1,934 @@
+---
+title: "Dpa_projectgroup_17"
+output:
+  html_document:
+    df_print: paged
+date: "2023-02-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages('naivebayes')
+#install.packages('psych')
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(caret)
+library(e1071)
+library(dplyr)
+library(psych)
+
+```
+**Load data:**\
+
+```{r}
+micro_DF_1 <- read_csv("/Users/amoghabhandari/Documents/IITDocs/Spring22/DPA/dpa_group-17project/DPAProject17/dataset/microbes.csv")
+
+View(micro_DF_1)
+```
+**Structure of Data:**\
+
+```{r}
+summary(micro_DF_1)
+```
+
+
+```{r}
+str(micro_DF_1)
+```
+Feature Definition: 
+
+1.	Solidity: It is the ratio of area of an object to the area of a convex hull of the object.
+2.	Eccentricity: The eccentricity is the ratio of length of major to minor axis of an object.
+3.	EquivDiameter: Diameter of a circle with the same area as the region.
+4.	Extrema: Extrema points in the region. 
+5.	Filled Area: Number of on pixels in FilledImage, returned as a scalar.
+6.	Extent: Ratio of the pixel area of a region with respect to the bounding box area of an object.  
+7.	Orientation: The overall direction of the shape. The value ranges from -90 degrees to 90 degrees.
+8.	Euler number: Number of objects in the region minus the number of holes in those objects.
+9.	Bounding box (1-4): Position and size of the smallest box (rectangle) which bounds the object.
+10.	Convex hull (1-4): Smallest convex shape/polygon that contains the object.
+11.	Major axis: The major axis is the endpoints of the longest line that can be drawn through the object. Length (in pixels) of the major axis is the largest dimension of the object.
+12.	Minor axis: The axis perpendicular to the major axis is called the minor axis. Length (in pixels) of the minor axis is the smallest line connecting a pair of points on the contour.
+13.	Perimeter: Number of pixels around the border of the region.
+14.	Centroid: Centre of mass of the region. It is a measure of object’s location in the image.
+15.	Area: Total number of pixels in a region/shape.
+16. Raddi: Radius of the objects.
+17. Microorganisms: Name of the microorganisms (This is the target class-type of microorganism)
+
+
+```{r}
+obs <- dim(micro_DF_1)[1]
+var <- dim(micro_DF_1)[2]
+cat('Number of observations : ',obs,' and Number of variables : ',var)
+```
+
+```{r}
+head(micro_DF_1)
+```
+
+Converting columns ConvexHull3 and Area from character type to double
+```{r}
+micro_DF_1$ConvexHull3 <- as.double(micro_DF_1$ConvexHull3)
+```
+
+
+```{r}
+micro_DF_1$Area <- as.double(micro_DF_1$Area)
+```
+
+```{r}
+str(micro_DF_1)
+```
+
+
+```{r}
+#Dropping the "..1" unnamed column.
+micro_DF_1 <- subset(micro_DF_1, select = -c(...1))
+```
+
+```{r}
+#Checking for null values 
+lapply(micro_DF_1,function(x) { length(which(is.na(x)))})
+```
+We some null values present.
+
+```{r}
+#removing null values
+micro_DF_2 = na.omit(micro_DF_1)
+View(micro_DF_2)
+```
+
+
+```{r}
+#Checking for null values 
+lapply(micro_DF_2,function(x) { length(which(is.na(x)))})
+```
+
+
+
+```{r}
+#Checking if there is missing data
+anyNA(micro_DF_2)
+```
+
+There are no missing readings in Microbes dataset.
+
+```{r}
+library(dplyr)
+lapply(micro_DF_2,function(x) { (typeof(x))})
+```
+
+```{r}
+table(micro_DF_2$microorganisms)
+```
+
+**Exploratory Data Analysis:**\
+
+**Let's Analyze our variables-**\
+
+**Bar Plots:**\
+
+```{r}
+counts = table(micro_DF_2$Solidity)
+barplot(counts, main = "Bar Plot of Solidity values", 
+        xlab = "Solidity")
+counts
+```
+
+```{r}
+#removing negative values from Solidity
+micro_DF_3 = subset(micro_DF_2, micro_DF_2$Solidity>0.0)
+View(micro_DF_3)
+```
+
+```{r}
+counts = table(micro_DF_3$Solidity)
+barplot(counts, main = "Bar Plot of Solidity values", xlab = "Solidity")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Eccentricity)
+barplot(counts, main = "Bar Plot of Eccentricity values", xlab = "Eccentricity")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$EquivDiameter)
+barplot(counts, main = "Bar Plot of EquivDiameter values", xlab = "EquivDiameter")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Extrema)
+barplot(counts, main = "Bar Plot of Extrema values",  xlab = "Extrema")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$FilledArea)
+barplot(counts, main = "Bar Plot of FilledArea values",  xlab = "FilledArea")
+counts
+```
+
+```{r}
+#removing negative values from FilledArea
+micro_DF_3 = subset(micro_DF_3, micro_DF_3$FilledArea>0.0)
+```
+
+```{r}
+counts = table(micro_DF_3$FilledArea)
+barplot(counts, main = "Bar Plot of FilledArea values",  xlab = "FilledArea")
+counts
+```
+
+```{r}
+counts = table(micro_DF_3$Extent)
+barplot(counts, main = "Bar Plot of Extent values",  xlab = "Extent")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Orientation)
+barplot(counts, main = "Bar Plot of Orientation values",  xlab = "Orientation")
+counts
+```
+
+```{r}
+#removing negative values from Orientation
+micro_DF_3 = subset(micro_DF_3, micro_DF_3$Orientation>0.0)
+```
+
+```{r}
+counts = table(micro_DF_3$Orientation)
+barplot(counts, main = "Bar Plot of Orientation values",  xlab = "Orientation")
+counts
+```
+
+```{r}
+counts = table(micro_DF_3$EulerNumber)
+barplot(counts, main = "Bar Plot of EulerNumber values",  xlab = "EulerNumber")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$BoundingBox1)
+barplot(counts, main = "Bar Plot of BoundingBox1 values",  xlab = "BoundingBox1")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$BoundingBox2)
+barplot(counts, main = "Bar Plot of BoundingBox2 values",  xlab = "BoundingBox2")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$BoundingBox3)
+barplot(counts, main = "Bar Plot of BoundingBox3 values",  xlab = "BoundingBox3")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$BoundingBox4)
+barplot(counts, main = "Bar Plot of BoundingBox4 values",  xlab = "BoundingBox4")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$ConvexHull1)
+barplot(counts, main = "Bar Plot of ConvexHull1 values",  xlab = "ConvexHull1")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$ConvexHull2)
+barplot(counts, main = "Bar Plot of ConvexHull2 values",  xlab = "ConvexHull2")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$ConvexHull3)
+barplot(counts, main = "Bar Plot of ConvexHull3 values",  xlab = "ConvexHull3")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$ConvexHull4)
+barplot(counts, main = "Bar Plot of ConvexHull4 values",  xlab = "ConvexHull4")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$MajorAxisLength)
+barplot(counts, main = "Bar Plot of MajorAxisLength values",  xlab = "MajorAxisLength")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$MinorAxisLength)
+barplot(counts, main = "Bar Plot of MinorAxisLength values",  xlab = "MinorAxisLength")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Perimeter)
+barplot(counts, main = "Bar Plot of Perimeter values",  xlab = "Perimeter")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$ConvexArea)
+barplot(counts, main = "Bar Plot of ConvexArea values",  xlab = "ConvexArea")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Centroid1)
+barplot(counts, main = "Bar Plot of Centroid1 values",  xlab = "Centroid1")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Centroid2)
+barplot(counts, main = "Bar Plot of Centroid2 values",  xlab = "Centroid2")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$Area)
+barplot(counts, main = "Bar Plot of Area values",  xlab = "Area")
+counts
+```
+
+
+```{r}
+counts = table(micro_DF_3$raddi)
+barplot(counts, main = "Bar Plot of Raddi values",  xlab = "Raddi")
+counts
+```
+
+```{r}
+View(micro_DF_3)
+```
+
+Using Bar plots we identified that some features had negative values. Solidity, FilledArea and Orientation are the features that had negative values in them. We cleaned the data by removing these negative values.
+
+**Box Plots:**\
+
+1.Solidity
+```{r}
+hist(micro_DF_3$Solidity, probability = TRUE, col = 'orange',
+     main = 'Distribution of Solidity', xlab = 'Measurement of Solidity')
+ggplot(micro_DF_3, aes(x = microorganisms, y = Solidity, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Solidity of Each Species') 
+solidity <- aov(Solidity ~ microorganisms, data = micro_DF_3)
+summary(solidity)
+```
+
+The solidity of most microorganisms lies between 8-10
+
+3.EquivDiameter
+```{r}
+hist(micro_DF_3$EquivDiameter, probability = TRUE, col = 'orange',
+     main = 'Distribution of EquivDiameter', xlab = 'EquivDiameter Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = EquivDiameter, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'EquivDiameter of Each Species')
+equivDia <- aov(EquivDiameter ~ microorganisms, data = micro_DF_3)
+summary(equivDia)
+```
+
+4.Extrema
+```{r}
+hist(micro_DF_3$Extrema, probability = TRUE, col = 'orange',
+     main = 'Distribution of Extrema', xlab = 'Extrema Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = EquivDiameter, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Extrema of Each Species')
+extrema <- aov(EquivDiameter ~ microorganisms, data = micro_DF_3)
+summary(extrema)
+```
+
+5.FilledArea
+```{r}
+hist(micro_DF_3$FilledArea, probability = TRUE, col = 'orange',
+     main = 'Distribution of FilledArea', xlab = 'FilledArea Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = FilledArea, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'FilledArea of Each Species')
+filledArea <- aov(FilledArea ~ microorganisms, data = micro_DF_3)
+summary(filledArea)
+```
+
+6.Extent
+```{r}
+hist(micro_DF_3$EquivDiameter, probability = TRUE, col = 'orange',
+     main = 'Distribution of Extent', xlab = 'Extent Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = Extent, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Extent of Each Species')
+equivDia <- aov(Extent ~ microorganisms, data = micro_DF_3)
+summary(equivDia)
+```
+
+8.EulerNumber
+```{r}
+hist(micro_DF_3$EulerNumber, probability = TRUE, col = 'orange',
+     main = 'Distribution of EulerNumber', xlab = 'EulerNumber Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = EulerNumber, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'EulerNumber of Each Species')
+eulerNumber <- aov(EulerNumber ~ microorganisms, data = micro_DF_3)
+summary(eulerNumber)
+```
+
+9.ConvexHull
+```{r}
+convexhull <- micro_DF_3 %>% 
+  select(1, microorganisms, starts_with('ConvexH')) %>% 
+  gather(key = 'ConvexHull', value = 'Measurement', -c(1, microorganisms))
+hist(convexhull$Measurement, 
+     main = 'Distribution of ConvexHull(1-4) Measurements', 
+     xlab = 'ConvexHull Measurements', col = 'orange')
+conHaov <- aov(formula = Measurement ~ microorganisms + ConvexHull, data = convexhull)
+summary(conHaov)
+convexH <- micro_DF_3 %>% 
+  select(microorganisms, starts_with('ConvexH')) %>% 
+  mutate(ConvexHull = (ConvexHull1 + ConvexHull2 + ConvexHull3 + ConvexHull4)/4)
+ggplot(convexH, aes(x = microorganisms, y = ConvexHull, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Average ConvexHull of Each Speicies', x = 'Microorganisms',
+       y = 'ConvexHull')
+```
+
+ConvexHull was measured four times, and there was no variation in the results. According to the histogram, the distribution of convexHull was comparatively even, except 19-20 (most) and above 22 (least).Each of the ten species have a distinct convexHull value.
+
+10.BoundingBox
+```{r}
+boundingbox <- micro_DF_3 %>% 
+  select(1, microorganisms, starts_with('Bounding')) %>% 
+  gather(key = 'BoundingBox', value = 'Measurement', -c(1, microorganisms))
+hist(boundingbox$Measurement, 
+     main = 'Distribution of BoundingBox Measurements', 
+     xlab = 'BoundingBox Measurements', col = 'orange')
+boundaov <- aov(formula = Measurement ~ microorganisms + BoundingBox, data = boundingbox)
+summary(boundaov)
+boundingB <- micro_DF_3 %>% 
+  select(microorganisms, starts_with('Bounding')) %>% 
+  mutate(BoundingBox = (BoundingBox1 + BoundingBox2 + BoundingBox3 + BoundingBox4)/4)
+ggplot(boundingB, aes(x = microorganisms, y = BoundingBox, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Average BoundingBox of Each Speicies', x = 'Microorganisms',
+       y = 'BoundingBox')
+```
+
+BoundingBox is measured in four different ways. Each of the four BoundingBoxes have a different set of measurements. For each of the 10 species, BoundingdBox measurements are distinct.
+
+
+11.MajorAxisLength
+```{r}
+hist(micro_DF_3$MajorAxisLength, probability = TRUE, col = 'orange',
+     main = 'Distribution of MajorAxisLength', xlab = 'MajorAxisLength Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = MajorAxisLength, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'MajorAxisLength of Each Species')
+majorAxisLength <- aov(MajorAxisLength ~ microorganisms, data = micro_DF_3)
+summary(majorAxisLength)
+```
+
+12.MinorAxisLength
+```{r}
+hist(micro_DF_3$MinorAxisLength, probability = TRUE, col = 'orange',
+     main = 'Distribution of MinorAxisLength', xlab = 'MinorAxisLength Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = MinorAxisLength, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'MinorAxisLength of Each Species')
+minorAxisLength <- aov(MinorAxisLength ~ microorganisms, data = micro_DF_3)
+summary(minorAxisLength)
+```
+
+13.Perimeter
+```{r}
+hist(micro_DF_3$Perimeter, probability = TRUE, col = 'orange',
+     main = 'Distribution of Perimeter', xlab = 'Perimeter Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = Perimeter, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Perimeter of Each Species')
+perimeter <- aov(Perimeter ~ microorganisms, data = micro_DF_3)
+summary(perimeter)
+```
+
+14.ConvexArea
+```{r}
+hist(micro_DF_3$ConvexArea, probability = TRUE, col = 'orange',
+     main = 'Distribution of ConvexArea', xlab = 'ConvexArea Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = ConvexArea, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'ConvexArea of Each Species')
+convex <- aov(ConvexArea ~ microorganisms, data = micro_DF_3)
+summary(convex)
+```
+
+15.Centroid1
+```{r}
+hist(micro_DF_3$Centroid1, probability = TRUE, col = 'orange',
+     main = 'Distribution of Centroid1', xlab = 'Centroid1 Measurement')
+ggplot(micro_DF_3, aes(x = microorganisms, y = Centroid1, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Centroid1 of Each Species')
+centroid <- aov(Centroid1 ~ microorganisms, data = micro_DF_3)
+summary(centroid)
+```
+
+16.Area
+```{r}
+hist(micro_DF_3$Area, probability = TRUE,
+     main = 'Distribution of Area', xlab = 'Area', col = 'orange')
+ggplot(micro_DF_3, aes(x = microorganisms, y = Area, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Area of Each Species') 
+area <- aov(Area ~ microorganisms, data = micro_DF_3)
+summary(area)
+```
+
+From the above plot, area is less than 2 for more than 40% of the microorganisms. There is significant difference between these species.
+
+
+17.Raddi
+```{r}
+hist(micro_DF_3$raddi, probability = TRUE, col = 'orange',
+     main = 'Distribution of Raddi', xlab = 'Raddi of Mircroorganisms')
+ggplot(micro_DF_3, aes(x = microorganisms, y = raddi, fill = microorganisms)) +
+  geom_boxplot() +
+  labs(title = 'Raddi of Each Species') 
+RadiAov <- aov(raddi ~ microorganisms, data = micro_DF_3)
+summary(RadiAov)
+```
+
+The raddi measurement of most microorganisms was 4-8.
+
+
+**Strip Plots:**\
+
+```{r}
+library(lattice)
+
+stripplot(micro_DF_3$raddi~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$Perimeter~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$Extent~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$MinorAxisLength~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$MajorAxisLength~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$Eccentricity~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+stripplot(micro_DF_3$FilledArea~micro_DF_3$microorganisms,linewidth = 0.6, jitter = 0.3)
+```
+
+
+**Counting microorganisms types:**\
+
+```{r}
+microbe_plot <- micro_DF_3 %>% 
+  select(microorganisms) %>% 
+  group_by(microorganisms) %>% 
+  summarise(Count = n()) %>% 
+  arrange(Count)
+microbe_plot
+```
+
+```{r}
+ggplot(microbe_plot, aes(x = fct_reorder(microorganisms, Count), y = Count, fill = microorganisms)) +
+  geom_bar(stat = 'identity') + 
+  labs(title = 'The Count of Different Microbes', x = 'Microorganisms',
+       y = 'Count') 
+```
+
+The dataset contains ten different species. The largest population is in Ulothrix, and the lowest population is in Spirogyra.
+
+General Informaiton of Each Species:
+
+Calculating the average reading of variables for each species.
+
+```{r}
+avg_microbe <- micro_DF_3 %>% 
+  group_by(microorganisms) %>% 
+  summarise(across(where(is.numeric), mean))
+avg_microbe
+```
+
+```{r}
+dim(micro_DF_3)
+```
+
+**Correlation matrix:**\
+
+```{r}
+library(dplyr)
+lapply(micro_DF_3,function(x) { (typeof(x))})
+```
+
+Remapping target values for correlation matrix
+```{r}
+library(dplyr)
+micro_DF_4 = micro_DF_3 %>% mutate(
+  microorganisms = recode(
+    microorganisms,
+    'Aspergillus sp' = 0,
+    'Diatom' = 1,
+    'Penicillum' = 2,
+    'Pithophora' = 3,
+    'Protozoa' = 4,
+    'Raizopus' = 5,
+    'Spirogyra' = 6,
+    'Ulothrix' = 7,
+    'Yeast' = 8,
+    'Volvox' = 9
+  )
+)
+```
+
+
+```{r}
+str(micro_DF_4)
+```
+
+
+```{r}
+corrplot(cor(micro_DF_4[, c('Orientation','Eccentricity', 'raddi', 'EquivDiameter', 'microorganisms')]))
+```
+
+Considering 'Orientation' defintion, it is not of much help in determining the microorganism. From the above correlation plot, we can see that orientation is not correlated to microoragnism and would not effect the result in anyway. We can remove this feature.
+We can calculate eccentricity using major axis and minor axis values from it's respective columns. We can remove this redundant feature as well.
+Raddi and EquivDiameter have good correlation with microorganisms, these features can be sustained. 
+
+
+*Dropping Unncessary Columns*\
+```{r}
+drop_col <- c("Orientation","Eccentricity")
+microbesDF = micro_DF_3[,!(names(micro_DF_3) %in% drop_col)]
+View(microbesDF)
+```
+
+
+```{r}
+correlation_mtrx <- microbesDF %>% 
+  select(-microorganisms, Solidity)
+corm <- cor(correlation_mtrx)
+corrplot(corm, tl.cex = 0.7)
+```
+
+Above is the correlation plot for remaining features with each other. From the correlation plot, there are some features highly correlated to each other. For ConvexHull1-ConvexHull4, they are highly positive correlated. EulerNumber is negative related to Area.
+
+```{r}
+dim(microbesDF)
+```
+
+**MODELS:**\
+
+```{r}
+library(naivebayes)
+library(randomForest)
+```
+
+```{r}
+#Split data
+
+X <- select(microbesDF, -c(Solidity, microorganisms))
+Y <- as.factor(microbesDF$microorganisms)
+set.seed(123)
+```
+
+
+```{r}
+dataSplitsplitIndexNb <- createDataPartition(Y, p = 0.75, list = FALSE)
+
+Xtrain_knn <- X[dataSplitsplitIndexNb, ]
+Ytrain_knn <- Y[dataSplitsplitIndexNb]
+
+Xtest_knn <- X[-dataSplitsplitIndexNb, ]
+Ytest_knn <- Y[-dataSplitsplitIndexNb]
+```
+
+```{r}
+set.seed(111)
+fitControl <- trainControl(method = "repeatedcv",
+                           #method = "cv",    
+                           number = 10,
+                           repeats = 3,
+                           savePredictions="final",
+                           classProbs = TRUE
+                           )
+```
+
+```{r}
+knnControl <- trainControl(method = 'repeatedcv', repeats = 3)
+```
+
+
+**KNN Classifier**\
+
+```{r}
+knn_model <- train(Xtrain_knn, Ytrain_knn, method = 'knn', 
+                  preProcess = c('center', 'scale'),
+                  trControl = knnControl, tuneLength = 20)
+knn_model
+```
+
+
+```{r}
+plot(knn_model)
+```
+```{r}
+pred_knn_train <- predict(knn_model, Xtrain_knn)
+knn_cm_train <- confusionMatrix(pred_knn_train, Ytrain_knn)
+knn_cm_train
+```
+
+Train data set accuracy is 89.16%.
+
+```{r}
+pred_knn <- predict(knn_model, Xtest_knn)
+knn_cm <- confusionMatrix(pred_knn, Ytest_knn)
+knn_cm
+```
+
+Test data set accuracy is 84.54%.
+
+
+**Random Forest Classifier**\
+
+```{r}
+set.seed(112)
+tuned_rf <- tuneRF(x = Xtrain_knn, y = Ytrain_knn,
+                  ntreeTry = 500, mtryStart = 5,
+                  stepFactor = 1.5, improve = 0.005, trace = TRUE, plot = TRUE)
+tuned_rf
+```
+
+
+```{r}
+set.seed(7)
+rf_model <- randomForest(Ytrain_knn ~ .,
+                         data = Xtrain_knn,
+                         mtry = 5,
+                         ntree = 500)
+plot(rf_model)
+rf_model
+```
+
+```{r}
+pred_rf_train <-  predict(rf_model, Xtrain_knn)
+rf_cm_train <- confusionMatrix(pred_rf_train, Ytrain_knn)
+rf_cm_train
+```
+
+Train data set accuracy is 100%.
+
+```{r}
+pred_rf <-  predict(rf_model, Xtest_knn)
+rf_cm <- confusionMatrix(pred_rf, Ytest_knn)
+rf_cm
+```
+
+Test data set accuracy is 98.56%.
+
+```{r}
+varImpPlot(rf_model)
+```
+
+Raddi is the important variable, followed by perimeter.
+
+**Naive Bayes Classifier**\
+
+```{r}
+microbes_DF_nb <- microbesDF
+
+microbes_DF_nb$microorganisms <- make.names(microbes_DF_nb$microorganisms)
+microbes_DF_nb$microorganisms <- as.factor(microbes_DF_nb$microorganisms)
+```
+
+
+```{r}
+nrows <- NROW(microbes_DF_nb)
+set.seed(218)                           
+splitIndexNb <- sample(1:nrows, 0.7 * nrows)
+
+train_nb <- microbes_DF_nb[splitIndexNb,]
+test_nb <- microbes_DF_nb[-splitIndexNb,]
+
+```
+
+
+```{r}
+naiveB_model <- naiveBayes(train_nb, train_nb$microorganisms, laplace = 1) 
+naiveB_model 
+```
+
+```{r}
+pred_naive_b_train <- predict(naiveB_model, train_nb)
+nb_cm_train <- confusionMatrix(pred_naive_b_train, train_nb$microorganisms)
+nb_cm_train
+```
+
+Train data set accuracy is 84.85%.
+
+```{r}
+pred_naive_b2 <- predict(naiveB_model, test_nb)
+nb_cm <- confusionMatrix(pred_naive_b2, test_nb$microorganisms)
+nb_cm
+```
+
+Test data set accuracy is 83.59%.
+
+```{r}
+library(caretEnsemble)
+library(MASS)
+library(glmnet)
+library(ranger)
+library(plyr)
+library(tidyr)
+```
+
+```{r}
+library(doMC)
+registerDoMC(cores = detectCores() - 1)
+```
+
+```{r}
+microbes_DF_nnet <- microbesDF
+head(microbes_DF_nnet)
+microbes_DF_nnet$microorganisms <- make.names(microbes_DF_nnet$microorganisms)
+microbes_DF_nnet$microorganisms <- as.factor(microbes_DF_nnet$microorganisms)
+```
+
+
+```{r}
+summary(microbes_DF_nnet)
+```
+
+
+```{r}
+splitIndexNb_nn <- createDataPartition(microbes_DF_nnet$microorganisms, p = .7, list = FALSE)
+train_nn <- microbes_DF_nnet[splitIndexNb_nn,]
+test_nn <- microbes_DF_nnet[-splitIndexNb_nn,]
+```
+
+
+**Logistic Regression Classifier**\
+
+```{r}
+log_reg_model <- train(
+  microorganisms ~ .,
+  train_nn,
+  method = "glmnet",
+  tuneGrid = expand.grid(.alpha = 0.9,
+                         .lambda = 0.002343928), 
+  metric = "Mean_F1",
+  preProc = c("center", "scale"),
+  trControl = fitControl
+)
+log_reg_model
+```
+
+```{r}
+pred_log_reg_train <- predict(log_reg_model, train_nn)                           
+logR_cm_train <- confusionMatrix(pred_log_reg_train, train_nn$microorganisms) 
+logR_cm_train
+```
+
+Train data set accuracy is 45.94%.
+
+```{r}
+pred_log_reg <- predict(log_reg_model, test_nn)                           
+logR_cm <- confusionMatrix(pred_log_reg, test_nn$microorganisms) 
+logR_cm
+```
+
+Test data set accuracy is 45.49%.
+
+**Neural Networks**\
+
+```{r}
+set.seed(1234)
+nnet_model <- train(microorganisms~.,
+                 train_nn,
+                  method = "nnet",
+                  preProc=c("center", "scale"),
+                  metric="Mean_F1",
+                  #tuneLength=20,
+                  tuneGrid = expand.grid(
+                    .size = 65,
+                    .decay = 0.00162278),
+                  trControl = fitControl,
+                  MaxNWts = 60000,
+                  maxit = 900,
+                  trace = FALSE)
+
+nnet_model
+```
+
+```{r}
+pred_nnet_train <- predict(nnet_model, train_nn)                           
+nnet_cm_train <- confusionMatrix(pred_nnet_train, train_nn$microorganisms) 
+nnet_cm_train
+```
+
+Train data set accuracy is 90.52%.
+
+```{r}
+pred_nnet <- predict(nnet_model, test_nn)                           
+nnet_cm <- confusionMatrix(pred_nnet, test_nn$microorganisms) 
+nnet_cm
+```
+
+Test data set accuracy is 86.79%.
+
+
+**Visualize to compare the accuracy of all methods**\
+
+```{r}
+models <- c('KNN', 'RandomForest', 'NaiveBayes', 'LogisticRegression', 'NeuralNetworks')
+values_acc <- c(knn_cm$overall[1]*100, rf_cm$overall[1]*100, nb_cm$overall[1]*100, logR_cm$overall[1]*100, nnet_cm$overall[1]*100)
+
+acc_table <- data.frame(models, values_acc)
+acc_table
+
+ggplot(acc_table, aes(x = fct_reorder(models, values_acc), y = values_acc)) +
+  geom_bar(stat = 'identity', fill = "lightblue") +
+  labs(title = 'Accuracy of Different Models', x = 'Models',
+       y = 'Accuracy percentage')
+
+```
+
+RandomForest (98.56%) has the highest accuracy among all the models, indicating that it is performing the best in terms of accurately predicting the target variable.
+
+NeuralNetworks (86.79%) has the second-highest accuracy, indicating relatively good performance.
+
+KNN (84.54%) and NaiveBayes (83.59%) have similar accuracy values, with KNN slightly lower than NaiveBayes.
+
+LogisticRegression (45.49%) has the lowest accuracy among all the models, indicating that it is performing the poorest in terms of accuracy.
+
